@@ -1,0 +1,87 @@
+---
+title: "Citations"
+author: "Colin M. Bosma"
+date: "January 4, 2016"
+output: html_document
+---
+
+```{r, echo=FALSE, results='hide', message=FALSE}
+library(rvest)
+library(ggplot2)
+library(xtable)
+library(pander)
+```
+
+```{r, echo=FALSE, results='hide'}
+# Let’s use SelectorGadget to find out which css selector matches the “cited by” column.
+page <- read_html("https://scholar.google.com/citations?user=acxXDGQAAAAJ&hl=en")
+
+# Specify the css selector in html_nodes() and extract the text with html_text(). Finally, change the string to numeric using as.numeric().
+citations <- page %>% html_nodes ("#gsc_a_b .gsc_a_c") %>% html_text()%>%as.numeric()
+
+```
+
+```{r, echo=FALSE}
+# Create a barplot of the number of citation:
+barplot(citations, main="Times Each Paper Cited", ylab='Number of citations', col="lightblue", xlab="",
+        ylim = c(0,5))
+
+```
+
+```{r, echo=FALSE}
+# Let's check citations of co-authors
+page <- read_html("https://scholar.google.com/citations?view_op=list_colleagues&hl=en&user=acxXDGQAAAAJ")
+
+Coauthors = page%>% html_nodes(css=".gsc_1usr_name a") %>% html_text()
+Coauthors = as.data.frame(Coauthors)
+names(Coauthors)='Coauthors'
+
+# How many times coauthors have been cited
+page <- read_html("https://scholar.google.com/citations?view_op=list_colleagues&hl=en&user=acxXDGQAAAAJ")
+
+citations = page%>% html_nodes(css = ".gsc_1usr_cby")%>%html_text()
+
+# Extract numeric characters using global substitute
+citations = gsub('Cited by','', citations)
+
+# Change string to numeric and then to data frame to make it easy to use with ggplot2
+citations = as.numeric(citations)
+citations = as.data.frame(citations)
+
+```
+
+### Affiliation of Coauthors
+
+```{r, echo=FALSE}
+# Affiliation of coauthors
+page <- read_html("https://scholar.google.com/citations?view_op=list_colleagues&hl=en&user=acxXDGQAAAAJ")
+
+affilation = page %>% html_nodes(css = ".gsc_1usr_aff")%>%html_text()
+affilation = as.data.frame(affilation)
+names(affilation)='Affilation'
+```
+
+### Coauthors
+```{r, echo=FALSE}
+# Now, let’s create a data frame that consists of coauthors, citations and affilations
+cauthors=cbind(Coauthors, citations, affilation)
+
+```
+
+```{r pander, echo=FALSE}
+pander(cauthors)
+```
+
+```{r xtable, results="asis"}
+table <- xtable(cauthors)
+print(table, type="html")
+
+```
+### Citations of Coauthors
+```{r, echo=FALSE}
+ggplot(cauthors,aes(Coauthors,citations))+geom_bar(stat="identity", fill="#046c9a",size=5)+
+  theme(axis.title.y   = element_blank())+ylab("Number of citations")+
+  theme(plot.title=element_text(size = 18,colour="black"), axis.text.y = element_text(colour="grey20",size=12))+
+  ggtitle('Citations of Coauthors')+coord_flip()
+```
+
